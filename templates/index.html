@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Ovladanie systemu</title>
+</head>
+<body>
+    <h1>Riadenie systemu</h1>
+
+    {% if not serial_ready %}
+        <form action="/open" method="post">
+            <button type="submit">Open (Inicializovat)</button>
+        </form>
+    {% elif not running %}
+        <form action="/start" method="post">
+            <button type="submit">Start (Spustit citanie)</button>
+        </form>
+    {% endif %}
+
+    <form action="/close" method="post">
+        <button type="submit">Close (Zastavit)</button>
+    </form>
+</body>
+</html>
