@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="sk">
+<head>
+    <meta charset="UTF-8">
+    <title>Monitorovanie systemu</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            text-align: center;
+            margin: 0;
+            padding: 0;
+        }
+
+        h1 {
+            margin-top: 30px;
+        }
+
+        .tabs {
+            display: flex;
+            justify-content: center;
+            margin: 20px 0;
+        }
+
+        .tab {
+            padding: 15px 30px;
+            margin: 0 10px;
+            background-color: #f0f0f0;
+            border-radius: 5px;
+            cursor: pointer;
+            text-decoration: none;
+            color: black;
+            font-weight: bold;
+        }
+
+        .tab:hover {
+            background-color: #dcdcdc;
+        }
+
+        .active {
+            background-color: #b0c4de;
+        }
+
+        .content {
+            padding: 20px;
+        }
+    </style>
+</head>
+<body>
+
+    <h1>Monitorovanie systemu</h1>
+    
+
+    
+    <div class="tabs">
+        <a href="{{ url_for('index') }}" class="tab">Domov</a>
+        <a href="{{ url_for('udaje') }}" class="tab">Udaje</a>
+        <a href="{{ url_for('databaza') }}" class="tab">Databaza</a>
+    </div>
+
+    <div class="content" id="content">
+        <!-- Tu sa bude menit obsah podla zvoleneho tabu -->
+        <p>Vitaj na stranke pre monitorovanie systemu.
+        Toto je INDEX.HMTL, tu bude 1.OPEN, 2.NASTAVENIE PARAMETROV, 3.START, 9.STOP, 10.CLOSE</p>
+    </div>
+    
+        <form action="{{ url_for('open_connection') }}" method="post">
+        <button type="submit" {% if serial_ready %}disabled{% endif %}>Open</button>
+    </form>
+
+    <form action="{{ url_for('start_reading') }}" method="post">
+        <button type="submit" {% if not serial_ready or running %}disabled{% endif %}>Start</button>
+    </form>
+
+    <form action="{{ url_for('stop_reading') }}" method="post">
+        <button type="submit" {% if not running %}disabled{% endif %}>Stop</button>
+    </form>
+
+    <form action="{{ url_for('close_connection') }}" method="post">
+        <button type="submit" {% if not serial_ready %}disabled{% endif %}>Close</button>
+    </form>
+
+    <p>Status:</p>
+    <ul>
+        <li>Seriovy port: {% if serial_ready %}<strong>Pripraveny</strong>{% else %}Nepripravene{% endif %}</li>
+        <li>Citanie: {% if running %}<strong>Prebieha</strong>{% else %}Zastavene{% endif %}</li>
+    </ul>
+    
+    <h2>Nastavenie parametrov</h2>
+    <form action="{{ url_for('set_parameters') }}" method="post">
+        <label for="solar_threshold">Teplota Solar ON (°C):</label>
+        <input type="number" name="solar_threshold" step="0.1" required><br><br>
+
+        <label for="boiler_threshold">Teplota Boiler ON (°C):</label>
+        <input type="number" name="boiler_threshold" step="0.1" required><br><br>
+
+        <button type="submit">Uložiť nastavenia</button>
+    </form>
+
+
+</body>
+</html>
