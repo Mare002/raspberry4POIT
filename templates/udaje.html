@@ -1,0 +1,65 @@
+
+<!DOCTYPE html>
+<html lang="sk">
+<head>
+    <meta charset="UTF-8">
+    <title>Monitorovanie systemu</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            text-align: center;
+            margin: 0;
+            padding: 0;
+        }
+
+        h1 {
+            margin-top: 30px;
+        }
+
+        .tabs {
+            display: flex;
+            justify-content: center;
+            margin: 20px 0;
+        }
+
+        .tab {
+            padding: 15px 30px;
+            margin: 0 10px;
+            background-color: #f0f0f0;
+            border-radius: 5px;
+            cursor: pointer;
+            text-decoration: none;
+            color: black;
+            font-weight: bold;
+        }
+
+        .tab:hover {
+            background-color: #dcdcdc;
+        }
+
+        .active {
+            background-color: #b0c4de;
+        }
+
+        .content {
+            padding: 20px;
+        }
+    </style>
+</head>
+<body>
+
+    <h1>Monitorovanie systemu</h1>
+
+    <div class="tabs">
+        <a href="{{ url_for('index') }}" class="tab">Domov</a>
+        <a href="{{ url_for('udaje') }}" class="tab">Udaje</a>
+        <a href="{{ url_for('databaza') }}" class="tab">Databaza</a>
+    </div>
+
+    <div class="content" id="content">
+        <!-- Tu sa bude menit obsah podla zvoleneho tabu -->
+        <p>monitorovanie systemu. TU BUDE: 4. ZOZNAM, 5.GRAFY, 6.CIFERNIKY, TOTO BUDU LIVE DATA KTORE SA NACITAVAJU</p>
+    </div>
+
+</body>
+</html>
