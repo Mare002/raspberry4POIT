@@ -1,0 +1,848 @@
+<!DOCTYPE html>
+<html lang="sk">
+<head>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@2.9.4/dist/Chart.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-gauge@0.3.0/dist/chartjs-gauge.min.js"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    
+    <meta charset="UTF-8">
+    <title>Monitorovanie systému - Živé údaje</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            color: #333;
+            overflow-x: auto;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        h1 {
+            text-align: center;
+            color: white;
+            font-size: 2.5rem;
+            margin-bottom: 30px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+            animation: fadeInDown 1s ease-out;
+        }
+
+        .tabs {
+            display: flex;
+            justify-content: center;
+            margin-bottom: 40px;
+            gap: 15px;
+        }
+
+        .tab {
+            padding: 15px 30px;
+            background: rgba(255, 255, 255, 0.9);
+            border-radius: 25px;
+            text-decoration: none;
+            color: #333;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            backdrop-filter: blur(10px);
+            border: 2px solid transparent;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+        }
+
+        .tab:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 8px 25px rgba(0,0,0,0.2);
+            background: rgba(255, 255, 255, 1);
+        }
+
+        .active {
+            background: linear-gradient(45deg, #4CAF50, #45a049);
+            color: white;
+            border: 2px solid rgba(255,255,255,0.3);
+        }
+
+        .icon {
+            font-size: 1.2em;
+            margin-right: 8px;
+        }
+
+        .main-dashboard {
+            display: grid;
+            grid-template-columns: 400px 1fr 1fr;
+            gap: 30px;
+            margin-bottom: 40px;
+        }
+
+        .data-table-card {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 20px;
+            padding: 25px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+            backdrop-filter: blur(10px);
+            animation: fadeInLeft 1s ease-out;
+        }
+
+        .chart-card {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 20px;
+            padding: 25px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+            backdrop-filter: blur(10px);
+            animation: fadeInRight 1s ease-out;
+        }
+
+        .chart-card:nth-child(3) {
+            animation: fadeInRight 1.2s ease-out;
+        }
+
+        .card-title {
+            text-align: center;
+            margin-bottom: 20px;
+            color: #495057;
+            font-size: 1.3rem;
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+        }
+
+        .data-table {
+            max-height: 350px;
+            overflow-y: auto;
+            border-radius: 12px;
+            box-shadow: inset 0 2px 8px rgba(0,0,0,0.1);
+        }
+
+        .data-table table {
+            width: 100%;
+            border-collapse: collapse;
+            background: white;
+            border-radius: 12px;
+            overflow: hidden;
+        }
+
+        .data-table th {
+            background: linear-gradient(45deg, #495057, #6c757d);
+            color: white;
+            padding: 10px 5px;
+            font-weight: 600;
+            text-align: center;
+            position: sticky;
+            top: 0;
+            z-index: 10;
+            font-size: 0.85rem;
+        }
+
+        .data-table td {
+            padding: 8px 5px;
+            text-align: center;
+            border-bottom: 1px solid #e9ecef;
+            transition: background-color 0.2s ease;
+            font-size: 0.85rem;
+            white-space: nowrap;
+        }
+
+        .data-table tr:hover td {
+            background-color: #f8f9fa;
+        }
+
+        .data-table tr:nth-child(even) td {
+            background-color: #f8f9fa;
+        }
+
+        .status-active {
+            color: #28a745;
+            font-weight: 600;
+        }
+
+        .status-inactive {
+            color: #6c757d;
+            font-weight: 600;
+        }
+
+        .chart-controls {
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+            margin-bottom: 15px;
+            flex-wrap: wrap;
+        }
+
+        .control-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 15px;
+            background: rgba(255, 255, 255, 0.8);
+            border-radius: 20px;
+            border: 2px solid #e9ecef;
+            transition: all 0.3s ease;
+            cursor: pointer;
+        }
+
+        .control-item:hover {
+            background: rgba(255, 255, 255, 1);
+            border-color: #007bff;
+            transform: translateY(-2px);
+        }
+
+        .control-item input {
+            margin: 0;
+            cursor: pointer;
+        }
+
+        .control-item label {
+            margin: 0;
+            cursor: pointer;
+            font-weight: 500;
+        }
+
+        .chart-container {
+            position: relative;
+            height: 300px;
+            background: rgba(255, 255, 255, 0.5);
+            border-radius: 15px;
+            padding: 15px;
+            box-shadow: inset 0 2px 8px rgba(0,0,0,0.1);
+        }
+
+        .gauges-section {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 20px;
+            padding: 30px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+            backdrop-filter: blur(10px);
+            animation: fadeInUp 1s ease-out;
+        }
+
+        .gauges-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 40px;
+            justify-items: center;
+        }
+
+        .gauge-container {
+            text-align: center;
+            padding: 20px;
+            background: rgba(255, 255, 255, 0.8);
+            border-radius: 20px;
+            box-shadow: 0 8px 25px rgba(0,0,0,0.1);
+            transition: all 0.3s ease;
+        }
+
+        .gauge-container:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 15px 35px rgba(0,0,0,0.2);
+        }
+
+        .gauge-title {
+            font-size: 1.2rem;
+            font-weight: 600;
+            margin-bottom: 15px;
+            color: #495057;
+        }
+
+        .refresh-indicator {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: rgba(40, 167, 69, 0.9);
+            color: white;
+            padding: 10px 20px;
+            border-radius: 25px;
+            font-weight: 600;
+            z-index: 1000;
+            animation: pulse 2s infinite;
+            display: none;
+        }
+
+        .no-data {
+            text-align: center;
+            color: #6c757d;
+            font-style: italic;
+            padding: 40px;
+        }
+
+        @keyframes fadeInDown {
+            from { opacity: 0; transform: translateY(-30px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        @keyframes fadeInLeft {
+            from { opacity: 0; transform: translateX(-30px); }
+            to { opacity: 1; transform: translateX(0); }
+        }
+
+        @keyframes fadeInRight {
+            from { opacity: 0; transform: translateX(30px); }
+            to { opacity: 1; transform: translateX(0); }
+        }
+
+        @keyframes fadeInUp {
+            from { opacity: 0; transform: translateY(30px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 0.8; }
+            50% { opacity: 1; }
+        }
+
+        @media (max-width: 1200px) {
+            .main-dashboard {
+                grid-template-columns: 1fr;
+                gap: 20px;
+            }
+            
+            .data-table-card {
+                order: 1;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                padding: 10px;
+            }
+            
+            .tabs {
+                flex-wrap: wrap;
+                gap: 10px;
+            }
+            
+            .tab {
+                padding: 12px 20px;
+                font-size: 14px;
+            }
+            
+            .gauges-grid {
+                grid-template-columns: 1fr;
+                gap: 20px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="refresh-indicator" id="refreshIndicator">
+        <i class="fas fa-sync-alt"></i> Aktualizácia dát...
+    </div>
+
+    <div class="container">
+        <h1><i class="fas fa-chart-line icon"></i>Monitorovanie systému - Živé údaje</h1>
+        
+        <div class="tabs">
+            <a href="{{ url_for('index') }}" class="tab">
+                <i class="fas fa-home icon"></i>Domov
+            </a>
+            <a href="{{ url_for('udaje') }}" class="tab active">
+                <i class="fas fa-chart-line icon"></i>Údaje
+            </a>
+            <a href="{{ url_for('databaza') }}" class="tab">
+                <i class="fas fa-database icon"></i>Databáza
+            </a>
+        </div>
+        
+        <div class="main-dashboard">
+            <div class="data-table-card">
+                <h2 class="card-title">
+                    <i class="fas fa-list icon" style="color: #007bff;"></i>
+                    Najnovšie záznamy
+                </h2>
+                <div class="data-table">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th><i class="fas fa-clock"></i> Čas</th>
+                                <th><i class="fas fa-thermometer-half"></i> T1</th>
+                                <th><i class="fas fa-thermometer-half"></i> T2</th>
+                                <th><i class="fas fa-cog"></i> V1</th>
+                                <th><i class="fas fa-cog"></i> V2</th>
+                            </tr>
+                        </thead>
+                        <tbody id="dataTableBody">
+                            <tr>
+                                <td colspan="5" class="no-data">
+                                    <i class="fas fa-spinner fa-spin" style="font-size: 2rem; color: #007bff; margin-bottom: 10px;"></i>
+                                    <p>Načítavanie dát...</p>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            
+            <div class="chart-card">
+                <h2 class="card-title">
+                    <i class="fas fa-chart-area icon" style="color: #dc3545;"></i>
+                    Graf teplôt
+                </h2>
+                <div class="chart-controls">
+                    <div class="control-item">
+                        <input type="checkbox" id="t1Checkbox" checked>
+                        <label for="t1Checkbox">
+                            <i class="fas fa-sun" style="color: #ff6b6b;"></i>
+                            Teplota 1
+                        </label>
+                    </div>
+                    <div class="control-item">
+                        <input type="checkbox" id="t2Checkbox" checked>
+                        <label for="t2Checkbox">
+                            <i class="fas fa-fire" style="color: #4ecdc4;"></i>
+                            Teplota 2
+                        </label>
+                    </div>
+                </div>
+                <div class="chart-container">
+                    <canvas id="tempChart"></canvas>
+                </div>
+            </div>
+            
+            <div class="chart-card">
+                <h2 class="card-title">
+                    <i class="fas fa-cogs icon" style="color: #28a745;"></i>
+                    Graf ventilov
+                </h2>
+                <div class="chart-controls">
+                    <div class="control-item">
+                        <input type="radio" name="ventilSelect" value="ventil1" id="ventil1" checked>
+                        <label for="ventil1">
+                            <i class="fas fa-cog" style="color: #28a745;"></i>
+                            Ventil 1
+                        </label>
+                    </div>
+                    <div class="control-item">
+                        <input type="radio" name="ventilSelect" value="ventil2" id="ventil2">
+                        <label for="ventil2">
+                            <i class="fas fa-cog" style="color: #fd7e14;"></i>
+                            Ventil 2
+                        </label>
+                    </div>
+                </div>
+                <div class="chart-container">
+                    <canvas id="ventilChart"></canvas>
+                </div>
+            </div>
+        </div>
+        
+        <div class="gauges-section">
+            <h2 class="card-title" style="margin-bottom: 30px;">
+                <i class="fas fa-tachometer-alt icon" style="color: #6f42c1;"></i>
+                Aktuálne hodnoty teplôt
+            </h2>
+            <div class="gauges-grid">
+                <div class="gauge-container">
+                    <h3 class="gauge-title">
+                        <i class="fas fa-sun" style="color: #ffc107;"></i>
+                        Teplota 1 (Solar)
+                    </h3>
+                    <canvas id="gaugeT1" width="200" height="200"></canvas>
+                </div>
+                <div class="gauge-container">
+                    <h3 class="gauge-title">
+                        <i class="fas fa-fire" style="color: #dc3545;"></i>
+                        Teplota 2 (Boiler)
+                    </h3>
+                    <canvas id="gaugeT2" width="200" height="200"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let tempChart;
+        let ventilChart;
+        let chartData = {};
+        let ventilData = {};
+        let gaugeT1, gaugeT2;
+
+        function showRefreshIndicator() {
+            const indicator = document.getElementById('refreshIndicator');
+            indicator.style.display = 'block';
+            setTimeout(() => {
+                indicator.style.display = 'none';
+            }, 1000);
+        }
+
+        function updateChart() {
+            const showT1 = document.getElementById('t1Checkbox').checked;
+            const showT2 = document.getElementById('t2Checkbox').checked;
+
+            const datasets = [];
+
+            if (showT1) {
+                datasets.push({
+                    label: 'Teplota 1 (Solar)',
+                    data: chartData.teplota1,
+                    borderColor: '#ff6b6b',
+                    backgroundColor: 'rgba(255, 107, 107, 0.1)',
+                    fill: false,
+                    tension: 0.4,
+                    borderWidth: 3,
+                    pointBackgroundColor: '#ff6b6b',
+                    pointBorderColor: '#fff',
+                    pointBorderWidth: 2,
+                    pointRadius: 4
+                });
+            }
+
+            if (showT2) {
+                datasets.push({
+                    label: 'Teplota 2 (Boiler)',
+                    data: chartData.teplota2,
+                    borderColor: '#4ecdc4',
+                    backgroundColor: 'rgba(78, 205, 196, 0.1)',
+                    fill: false,
+                    tension: 0.4,
+                    borderWidth: 3,
+                    pointBackgroundColor: '#4ecdc4',
+                    pointBorderColor: '#fff',
+                    pointBorderWidth: 2,
+                    pointRadius: 4
+                });
+            }
+
+            tempChart.data = {
+                labels: chartData.labels,
+                datasets: datasets
+            };
+            tempChart.update();
+        }
+
+        function updateVentilChart() {
+            const selected = document.querySelector('input[name="ventilSelect"]:checked').value;
+
+            let dataset;
+            if (selected === 'ventil1') {
+                dataset = {
+                    label: 'Ventil 1',
+                    data: ventilData.ventil1,
+                    borderColor: '#28a745',
+                    backgroundColor: 'rgba(40, 167, 69, 0.2)',
+                    fill: true,
+                    stepped: true,
+                    borderWidth: 3,
+                    pointBackgroundColor: '#28a745',
+                    pointBorderColor: '#fff',
+                    pointBorderWidth: 2,
+                    pointRadius: 5
+                };
+            } else {
+                dataset = {
+                    label: 'Ventil 2',
+                    data: ventilData.ventil2,
+                    borderColor: '#fd7e14',
+                    backgroundColor: 'rgba(253, 126, 20, 0.2)',
+                    fill: true,
+                    stepped: true,
+                    borderWidth: 3,
+                    pointBackgroundColor: '#fd7e14',
+                    pointBorderColor: '#fff',
+                    pointBorderWidth: 2,
+                    pointRadius: 5
+                };
+            }
+
+            ventilChart.data = {
+                labels: ventilData.labels,
+                datasets: [dataset]
+            };
+            ventilChart.update();
+        }
+
+        async function fetchDataAndInitChart() {
+            try {
+                showRefreshIndicator();
+                const response = await fetch('/api/teploty');
+                chartData = await response.json();
+                console.log("Načítané dáta pre teploty:", chartData);
+
+                const ctx = document.getElementById('tempChart').getContext('2d');
+                tempChart = new Chart(ctx, {
+                    type: 'line',
+                    data: {
+                        labels: chartData.labels,
+                        datasets: []
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: {
+                                display: true,
+                                position: 'top',
+                                labels: {
+                                    usePointStyle: true,
+                                    padding: 15,
+                                    font: {
+                                        weight: 'bold'
+                                    }
+                                }
+                            }
+                        },
+                        scales: {
+                            y: {
+                                beginAtZero: false,
+                                grid: {
+                                    color: 'rgba(0,0,0,0.1)'
+                                },
+                                ticks: {
+                                    callback: function(value) {
+                                        return value + '°C';
+                                    }
+                                }
+                            },
+                            x: {
+                                grid: {
+                                    color: 'rgba(0,0,0,0.1)'
+                                }
+                            }
+                        },
+                        interaction: {
+                            intersect: false,
+                            mode: 'index'
+                        }
+                    }
+                });
+
+                updateChart();
+            } catch (error) {
+                console.error("Chyba pri načítaní dát pre graf:", error);
+            }
+        }
+
+        async function fetchVentilDataAndInitChart() {
+            try {
+                const response = await fetch('/api/ventily');
+                ventilData = await response.json();
+                console.log("Načítané dáta pre ventily:", ventilData);
+
+                const ctx = document.getElementById('ventilChart').getContext('2d');
+                ventilChart = new Chart(ctx, {
+                    type: 'line',
+                    data: {
+                        labels: ventilData.labels,
+                        datasets: []
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: {
+                                display: true,
+                                position: 'top',
+                                labels: {
+                                    usePointStyle: true,
+                                    padding: 15,
+                                    font: {
+                                        weight: 'bold'
+                                    }
+                                }
+                            }
+                        },
+                        scales: {
+                            y: {
+                                beginAtZero: true,
+                                max: 1,
+                                grid: {
+                                    color: 'rgba(0,0,0,0.1)'
+                                },
+                                ticks: {
+                                    stepSize: 1,
+                                    callback: value => value === 1 ? 'Zapnuté' : 'Vypnuté'
+                                }
+                            },
+                            x: {
+                                grid: {
+                                    color: 'rgba(0,0,0,0.1)'
+                                }
+                            }
+                        },
+                        interaction: {
+                            intersect: false,
+                            mode: 'index'
+                        }
+                    }
+                });
+
+                updateVentilChart();
+            } catch (error) {
+                console.error("Chyba pri načítaní ventilových dát:", error);
+            }
+        }
+
+        function createGauge(ctx, label) {
+            console.log("Inicializujem gauge pre:", label);
+            return new Chart(ctx, {
+                type: 'gauge',
+                data: {
+                    datasets: [{
+                        value: 0,
+                        minValue: 0,
+                        data: [20, 30, 50, 100],
+                        backgroundColor: ['#28a745', '#ffc107', '#fd7e14', '#dc3545'],
+                        borderWidth: 0
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    title: {
+                        display: false
+                    },
+                    needle: {
+                        radiusPercentage: 2,
+                        widthPercentage: 3.2,
+                        lengthPercentage: 80,
+                        color: '#333'
+                    },
+                    valueLabel: {
+                        display: true,
+                        formatter: (value) => value.toFixed(1) + ' °C',
+                        color: '#333',
+                        backgroundColor: 'rgba(255,255,255,0.8)',
+                        borderRadius: 5,
+                        padding: {
+                            top: 10,
+                            bottom: 10
+                        }
+                    }
+                }
+            });
+        }
+
+        function updateGauges(t1, t2) {
+            console.log("Aktualizujem gauges:", { t1, t2 });
+            if (gaugeT1 && gaugeT2) {
+                gaugeT1.data.datasets[0].value = t1;
+                gaugeT2.data.datasets[0].value = t2;
+                gaugeT1.update();
+                gaugeT2.update();
+            } else {
+                console.warn("Gauge objekty nie sú inicializované!");
+            }
+        }
+
+        async function fetchAndUpdateTable() {
+            try {
+                const response = await fetch('/api/current_values');
+                const currentData = await response.json();
+                
+                if (currentData.error) {
+                    console.error("Chyba pri načítaní aktuálnych dát:", currentData.error);
+                    return;
+                }
+
+                // Načítanie zoznamu posledných záznamov (simulácia server-side dát)
+                const tableResponse = await fetch('/api/recent_records');
+                let tableData = [];
+                
+                if (tableResponse.ok) {
+                    tableData = await tableResponse.json();
+                } else {
+                    // Fallback - použijeme aktuálne dáta
+                    const now = new Date();
+                    tableData = [{
+                        cas: now.toLocaleTimeString(),
+                        teplota1: currentData.teplota1,
+                        teplota2: currentData.teplota2,
+                        ventil1: currentData.ventil1,
+                        ventil2: currentData.ventil2
+                    }];
+                }
+
+                updateDataTable(tableData);
+                updateGauges(currentData.teplota1, currentData.teplota2);
+                
+            } catch (error) {
+                console.error("Chyba pri načítaní dát pre tabuľku:", error);
+                const tableBody = document.getElementById('dataTableBody');
+                tableBody.innerHTML = `
+                    <tr>
+                        <td colspan="5" class="no-data">
+                            <i class="fas fa-exclamation-triangle" style="font-size: 2rem; color: #dc3545; margin-bottom: 10px;"></i>
+                            <p>Chyba pri načítaní dát</p>
+                        </td>
+                    </tr>
+                `;
+            }
+        }
+
+        function updateDataTable(data) {
+            const tableBody = document.getElementById('dataTableBody');
+            
+            if (!data || data.length === 0) {
+                tableBody.innerHTML = `
+                    <tr>
+                        <td colspan="5" class="no-data">
+                            <i class="fas fa-exclamation-triangle" style="font-size: 2rem; color: #ffc107; margin-bottom: 10px;"></i>
+                            <p>Nie sú dostupné žiadne záznamy.</p>
+                        </td>
+                    </tr>
+                `;
+                return;
+            }
+
+            tableBody.innerHTML = '';
+            data.forEach(record => {
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td>${record.cas}</td>
+                    <td>${parseFloat(record.teplota1).toFixed(1)}°C</td>
+                    <td>${parseFloat(record.teplota2).toFixed(1)}°C</td>
+                    <td>
+                        ${record.ventil1 ? 
+                            '<span class="status-active"><i class="fas fa-toggle-on"></i> ON</span>' : 
+                            '<span class="status-inactive"><i class="fas fa-toggle-off"></i> OFF</span>'
+                        }
+                    </td>
+                    <td>
+                        ${record.ventil2 ? 
+                            '<span class="status-active"><i class="fas fa-toggle-on"></i> ON</span>' : 
+                            '<span class="status-inactive"><i class="fas fa-toggle-off"></i> OFF</span>'
+                        }
+                    </td>
+                `;
+                tableBody.appendChild(row);
+            });
+        }
+
+        // Event listeners
+        document.getElementById('t1Checkbox').addEventListener('change', updateChart);
+        document.getElementById('t2Checkbox').addEventListener('change', updateChart);
+
+        document.addEventListener('DOMContentLoaded', () => {
+            document.querySelectorAll('input[name="ventilSelect"]').forEach(radio => {
+                radio.addEventListener('change', updateVentilChart);
+            });
+
+            // Inicializácia gauge grafov
+            console.log("DOM načítaný, inicializujem gauge grafy...");
+            const ctxT1 = document.getElementById('gaugeT1').getContext('2d');
+            const ctxT2 = document.getElementById('gaugeT2').getContext('2d');
+
+            gaugeT1 = createGauge(ctxT1, 'Teplota 1');
+            gaugeT2 = createGauge(ctxT2, 'Teplota 2');
+
+            // Načítanie počiatočných dát
+            fetchDataAndInitChart();
+            fetchVentilDataAndInitChart();
+            fetchAndUpdateTable();
+
+            // Automatická aktualizácia každých 5 sekúnd
+            setInterval(() => {
+                fetchDataAndInitChart();
+                fetchVentilDataAndInitChart();
+                fetchAndUpdateTable();
+            }, 5000);
+        });
+    </script>
+</body>
+</html>

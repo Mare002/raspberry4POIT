@@ -1,0 +1,458 @@
+<!DOCTYPE html>
+<html lang="sk">
+<head>
+    <meta charset="UTF-8">
+    <title>Monitorovanie systému - Domov</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            color: #333;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        h1 {
+            text-align: center;
+            color: white;
+            font-size: 2.5rem;
+            margin-bottom: 30px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+            animation: fadeInDown 1s ease-out;
+        }
+
+        .tabs {
+            display: flex;
+            justify-content: center;
+            margin-bottom: 40px;
+            gap: 15px;
+        }
+
+        .tab {
+            padding: 15px 30px;
+            background: rgba(255, 255, 255, 0.9);
+            border-radius: 25px;
+            text-decoration: none;
+            color: #333;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            backdrop-filter: blur(10px);
+            border: 2px solid transparent;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+        }
+
+        .tab:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 8px 25px rgba(0,0,0,0.2);
+            background: rgba(255, 255, 255, 1);
+        }
+
+        .active {
+            background: linear-gradient(45deg, #4CAF50, #45a049);
+            color: white;
+            border: 2px solid rgba(255,255,255,0.3);
+        }
+
+        .main-content {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 30px;
+            margin-bottom: 40px;
+        }
+
+        .welcome-card {
+            background: rgba(255, 255, 255, 0.95);
+            padding: 30px;
+            border-radius: 20px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+            backdrop-filter: blur(10px);
+            animation: fadeInLeft 1s ease-out;
+        }
+
+        .control-panel {
+            background: rgba(255, 255, 255, 0.95);
+            padding: 30px;
+            border-radius: 20px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+            backdrop-filter: blur(10px);
+            animation: fadeInRight 1s ease-out;
+        }
+
+        .status-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 15px;
+            margin-top: 20px;
+        }
+
+        .status-item {
+            background: linear-gradient(45deg, #f8f9fa, #e9ecef);
+            padding: 15px;
+            border-radius: 15px;
+            text-align: center;
+            border-left: 4px solid #007bff;
+            transition: all 0.3s ease;
+        }
+
+        .status-item:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+        }
+
+        .status-ready {
+            border-left-color: #28a745;
+            background: linear-gradient(45deg, #d4edda, #c3e6cb);
+        }
+
+        .status-running {
+            border-left-color: #ffc107;
+            background: linear-gradient(45deg, #fff3cd, #ffeaa7);
+        }
+
+        .control-buttons {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+
+        .btn {
+            padding: 12px 20px;
+            border: none;
+            border-radius: 12px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .btn:before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
+            transition: left 0.5s;
+        }
+
+        .btn:hover:before {
+            left: 100%;
+        }
+
+        .btn-open {
+            background: linear-gradient(45deg, #28a745, #20c997);
+            color: white;
+            box-shadow: 0 4px 15px rgba(40, 167, 69, 0.3);
+        }
+
+        .btn-start {
+            background: linear-gradient(45deg, #007bff, #6610f2);
+            color: white;
+            box-shadow: 0 4px 15px rgba(0, 123, 255, 0.3);
+        }
+
+        .btn-stop {
+            background: linear-gradient(45deg, #ffc107, #fd7e14);
+            color: white;
+            box-shadow: 0 4px 15px rgba(255, 193, 7, 0.3);
+        }
+
+        .btn-close {
+            background: linear-gradient(45deg, #dc3545, #e83e8c);
+            color: white;
+            box-shadow: 0 4px 15px rgba(220, 53, 69, 0.3);
+        }
+
+        .btn:disabled {
+            background: #6c757d;
+            cursor: not-allowed;
+            opacity: 0.6;
+            transform: none;
+        }
+
+        .btn:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(0,0,0,0.2);
+        }
+
+        .parameters-section {
+            background: rgba(255, 255, 255, 0.95);
+            padding: 30px;
+            border-radius: 20px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+            backdrop-filter: blur(10px);
+            animation: fadeInUp 1s ease-out;
+        }
+
+        .form-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+
+        .form-group {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .form-group label {
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: #495057;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .form-group input {
+            padding: 12px 15px;
+            border: 2px solid #e9ecef;
+            border-radius: 10px;
+            font-size: 16px;
+            transition: all 0.3s ease;
+            background: rgba(255, 255, 255, 0.8);
+        }
+
+        .form-group input:focus {
+            outline: none;
+            border-color: #007bff;
+            box-shadow: 0 0 0 3px rgba(0, 123, 255, 0.1);
+            background: white;
+        }
+
+        .btn-submit {
+            background: linear-gradient(45deg, #6f42c1, #e83e8c);
+            color: white;
+            padding: 15px 30px;
+            border: none;
+            border-radius: 12px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            width: 100%;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            box-shadow: 0 4px 15px rgba(111, 66, 193, 0.3);
+        }
+
+        .btn-submit:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(111, 66, 193, 0.4);
+        }
+
+        .icon {
+            font-size: 1.2em;
+            margin-right: 8px;
+        }
+
+        .section-title {
+            text-align: center;
+            margin-bottom: 25px;
+            color: #495057;
+            font-size: 1.5rem;
+            font-weight: 700;
+        }
+
+        @keyframes fadeInDown {
+            from {
+                opacity: 0;
+                transform: translateY(-30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        @keyframes fadeInLeft {
+            from {
+                opacity: 0;
+                transform: translateX(-30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateX(0);
+            }
+        }
+
+        @keyframes fadeInRight {
+            from {
+                opacity: 0;
+                transform: translateX(30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateX(0);
+            }
+        }
+
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        @media (max-width: 768px) {
+            .main-content {
+                grid-template-columns: 1fr;
+            }
+            
+            .form-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .control-buttons {
+                grid-template-columns: 1fr;
+            }
+            
+            .tabs {
+                flex-wrap: wrap;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1><i class="fas fa-thermometer-half icon"></i>Monitorovanie systému</h1>
+        
+        <div class="tabs">
+            <a href="{{ url_for('index') }}" class="tab active">
+                <i class="fas fa-home icon"></i>Domov
+            </a>
+            <a href="{{ url_for('udaje') }}" class="tab">
+                <i class="fas fa-chart-line icon"></i>Údaje
+            </a>
+            <a href="{{ url_for('databaza') }}" class="tab">
+                <i class="fas fa-database icon"></i>Databáza
+            </a>
+        </div>
+        
+        <div class="main-content">
+            <div class="welcome-card">
+                <h2 class="section-title">
+                    <i class="fas fa-info-circle icon"></i>Systémové informácie
+                </h2>
+                <p style="margin-bottom: 20px; font-size: 1.1rem; line-height: 1.6;">
+                    Vitajte v systéme pre monitorovanie teplôt. Tu môžete ovládať všetky funkcie systému 
+                    a sledovať aktuálny stav komponentov.
+                </p>
+                
+                <div class="status-grid">
+                    <div class="status-item {% if serial_ready %}status-ready{% endif %}">
+                        <i class="fas fa-plug icon" style="color: {% if serial_ready %}#28a745{% else %}#6c757d{% endif %};"></i>
+                        <div>
+                            <strong>Sériový port</strong><br>
+                            {% if serial_ready %}<span style="color: #28a745;">Pripravený</span>{% else %}<span style="color: #6c757d;">Nepripravený</span>{% endif %}
+                        </div>
+                    </div>
+                    
+                    <div class="status-item {% if running %}status-running{% endif %}">
+                        <i class="fas fa-play-circle icon" style="color: {% if running %}#ffc107{% else %}#6c757d{% endif %};"></i>
+                        <div>
+                            <strong>Čítanie dát</strong><br>
+                            {% if running %}<span style="color: #ffc107;">Prebieha</span>{% else %}<span style="color: #6c757d;">Zastavené</span>{% endif %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="control-panel">
+                <h2 class="section-title">
+                    <i class="fas fa-cogs icon"></i>Ovládacie panely
+                </h2>
+                
+                <div class="control-buttons">
+                    <form action="{{ url_for('open_connection') }}" method="post" style="margin: 0;">
+                        <button type="submit" class="btn btn-open" {% if serial_ready %}disabled{% endif %}>
+                            <i class="fas fa-power-off icon"></i>Open
+                        </button>
+                    </form>
+                    
+                    <form action="{{ url_for('start_reading') }}" method="post" style="margin: 0;">
+                        <button type="submit" class="btn btn-start" {% if not serial_ready or running %}disabled{% endif %}>
+                            <i class="fas fa-play icon"></i>Start
+                        </button>
+                    </form>
+                    
+                    <form action="{{ url_for('stop_reading') }}" method="post" style="margin: 0;">
+                        <button type="submit" class="btn btn-stop" {% if not running %}disabled{% endif %}>
+                            <i class="fas fa-stop icon"></i>Stop
+                        </button>
+                    </form>
+                    
+                    <form action="{{ url_for('close_connection') }}" method="post" style="margin: 0;">
+                        <button type="submit" class="btn btn-close" {% if not serial_ready %}disabled{% endif %}>
+                            <i class="fas fa-times icon"></i>Close
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+        
+        <div class="parameters-section">
+            <h2 class="section-title">
+                <i class="fas fa-sliders-h icon"></i>Nastavenie parametrov
+            </h2>
+            
+            <form action="{{ url_for('set_parameters') }}" method="post">
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label for="solar_threshold">
+                            <i class="fas fa-sun" style="color: #ffc107;"></i>
+                            Teplota Solar ON (°C):
+                        </label>
+                        <input type="number" 
+                               name="solar_threshold" 
+                               id="solar_threshold"
+                               step="0.1" 
+                               required 
+                               placeholder="napr. 25.0">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="boiler_threshold">
+                            <i class="fas fa-fire" style="color: #dc3545;"></i>
+                            Teplota Boiler ON (°C):
+                        </label>
+                        <input type="number" 
+                               name="boiler_threshold" 
+                               id="boiler_threshold"
+                               step="0.1" 
+                               required 
+                               placeholder="napr. 25.0">
+                    </div>
+                </div>
+                
+                <button type="submit" class="btn-submit">
+                    <i class="fas fa-save icon"></i>Uložiť nastavenia
+                </button>
+            </form>
+        </div>
+    </div>
+</body>
+</html>
