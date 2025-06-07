@@ -717,6 +717,7 @@
             initCharts();
             setupEventListeners();
             setTodayDate();
+            setupFileInput();
         });
 
         // Nastavenie dnešného dátumu ako predvolený
@@ -784,7 +785,9 @@
                 },
                 scales: {
                     y: {
-                        beginAtZero: true,
+                        beginAtZero: false,
+                        min: 10,
+                        max: 50,
                         grid: {
                             color: 'rgba(0,0,0,0.1)'
                         },
@@ -800,9 +803,25 @@
                         },
                         ticks: {
                             font: {
-                                size: 11
+                                size: 10
                             },
-                            maxTicksLimit: 10
+                            maxTicksLimit: 3,
+                            maxRotation: 0,
+                            minRotation: 0,
+                            callback: function(value, index, values) {
+                                const label = this.getLabelForValue(value);
+                                return label || '';
+                            }
+                        },
+                        title: {
+                            display: true,
+                            text: '',
+                            font: {
+                                size: 12,
+                                weight: 'bold'
+                            },
+                            color: '#495057',
+                            align: 'center'
                         }
                     }
                 }
@@ -873,16 +892,48 @@
             const ventilOptions = {
                 ...chartOptions,
                 scales: {
-                    ...chartOptions.scales,
                     y: {
-                        ...chartOptions.scales.y,
+                        beginAtZero: false,
+                        min: 0,
                         max: 1,
+                        grid: {
+                            color: 'rgba(0,0,0,0.1)'
+                        },
                         ticks: {
-                            ...chartOptions.scales.y.ticks,
+                            font: {
+                                size: 11
+                            },
                             stepSize: 1,
                             callback: function(value) {
-                                return value ? 'ON' : 'OFF';
+                                return value === 0 ? 'ON' : 'OFF';
                             }
+                        }
+                    },
+                    x: {
+                        grid: {
+                            color: 'rgba(0,0,0,0.1)'
+                        },
+                        ticks: {
+                            font: {
+                                size: 10
+                            },
+                            maxTicksLimit: 3,
+                            maxRotation: 0,
+                            minRotation: 0,
+                            callback: function(value, index, values) {
+                                const label = this.getLabelForValue(value);
+                                return label || '';
+                            }
+                        },
+                        title: {
+                            display: true,
+                            text: '',
+                            font: {
+                                size: 12,
+                                weight: 'bold'
+                            },
+                            color: '#495057',
+                            align: 'center'
                         }
                     }
                 }
@@ -925,46 +976,271 @@
 
         // Aktualizácia grafov s novými dátami
         function updateCharts(data) {
-            if (!data.labels || data.labels.length === 0) {
+            if (!data.zaznamy || data.zaznamy.length === 0) {
                 [tempChart1, tempChart2, ventilChart1, ventilChart2].forEach(chart => {
                     chart.data.labels = [];
                     chart.data.datasets[0].data = [];
+                    chart.options.scales.x.title.text = '';
                     chart.update();
                 });
                 return;
             }
 
-            // Vzorkovanie dát pre lepšiu výkonnosť ak je veľa bodov
-            let labels = data.labels;
-            let teplota1 = data.teplota1;
-            let teplota2 = data.teplota2;
-            let ventil1 = data.ventil1;
-            let ventil2 = data.ventil2;
+            // Zoradenie záznamov podľa času (najstarší prvý = vľavo, najnovší posledný = vpravo)
+            const sortedZaznamy = [...data.zaznamy].sort((a, b) => {
+                return new Date(a.cas) - new Date(b.cas);
+            });
 
-            if (labels.length > 100) {
-                const step = Math.ceil(labels.length / 100);
-                labels = labels.filter((_, index) => index % step === 0);
-                teplota1 = teplota1.filter((_, index) => index % step === 0);
-                teplota2 = teplota2.filter((_, index) => index % step === 0);
-                ventil1 = ventil1.filter((_, index) => index % step === 0);
-                ventil2 = ventil2.filter((_, index) => index % step === 0);
-            }
+            // Vytvorenie dátových bodov v chronologickom poradí
+            const tempData1 = [];
+            const tempData2 = [];
+            const ventilData1 = [];
+            const ventilData2 = [];
 
+            sortedZaznamy.forEach(zaznam => {
+                tempData1.push(zaznam.t1);
+                tempData2.push(zaznam.t2);
+                ventilData1.push(zaznam.v1);
+                ventilData2.push(zaznam.v2);
+            });
+
+            // Vytvorenie jednoduchých štítkov (len prázdne)
+            const labels = new Array(sortedZaznamy.length).fill('');
+            
+            // Vytvorenie popisu časového rozsahu pre title
+            const rangeTitle = createRangeTitle(sortedZaznamy);
+
+            // Aktualizácia teplôt
             tempChart1.data.labels = labels;
-            tempChart1.data.datasets[0].data = teplota1;
+            tempChart1.data.datasets[0].data = tempData1;
+            tempChart1.options.scales.x.title.text = rangeTitle;
             tempChart1.update('none');
 
             tempChart2.data.labels = labels;
-            tempChart2.data.datasets[0].data = teplota2;
+            tempChart2.data.datasets[0].data = tempData2;
+            tempChart2.options.scales.x.title.text = rangeTitle;
             tempChart2.update('none');
 
+            // Aktualizácia ventilov - s explicitným nastavením title
             ventilChart1.data.labels = labels;
-            ventilChart1.data.datasets[0].data = ventil1;
+            ventilChart1.data.datasets[0].data = ventilData1;
+            ventilChart1.options.scales.x.title.text = rangeTitle;
+            ventilChart1.options.scales.x.title.display = true;
+            ventilChart1.options.scales.x.title.font = { size: 12, weight: 'bold' };
+            ventilChart1.options.scales.x.title.color = '#495057';
             ventilChart1.update('none');
 
             ventilChart2.data.labels = labels;
-            ventilChart2.data.datasets[0].data = ventil2;
+            ventilChart2.data.datasets[0].data = ventilData2;
+            ventilChart2.options.scales.x.title.text = rangeTitle;
+            ventilChart2.options.scales.x.title.display = true;
+            ventilChart2.options.scales.x.title.font = { size: 12, weight: 'bold' };
+            ventilChart2.options.scales.x.title.color = '#495057';
             ventilChart2.update('none');
+
+            console.log('Range title set for all charts:', rangeTitle);
+        }
+
+        // Funkcia na vytvorenie title popisu časového rozsahu
+        function createRangeTitle(zaznamy) {
+            if (zaznamy.length === 0) return '';
+
+            const firstRecord = zaznamy[0];
+            const lastRecord = zaznamy[zaznamy.length - 1];
+            
+            console.log('First record:', firstRecord.cas);
+            console.log('Last record:', lastRecord.cas);
+            
+            // Získanie módu (jeden deň alebo rozsah)
+            const mode = document.querySelector('input[name="mode"]:checked').value;
+            console.log('Mode:', mode);
+            
+            if (mode === 'single') {
+                // Pre jeden deň: "Od 14:30 do 18:30"
+                const firstTime = extractTime(firstRecord.cas);
+                const lastTime = extractTime(lastRecord.cas);
+                const result = `Od ${firstTime} do ${lastTime}`;
+                console.log('Single mode result:', result);
+                return result;
+            } else {
+                // Pre rozsah dátumov: "Od 16.6. 14:30 do 18.6. 18:30"
+                // Získame dátumy z input polí pre istotu
+                const startDate = document.getElementById('start_date').value; // YYYY-MM-DD
+                const endDate = document.getElementById('end_date').value;     // YYYY-MM-DD
+                
+                const firstTime = extractTime(firstRecord.cas);
+                const lastTime = extractTime(lastRecord.cas);
+                
+                // Sformátujeme dátumy z input polí
+                let startDateFormatted = '';
+                let endDateFormatted = '';
+                
+                if (startDate) {
+                    const [year, month, day] = startDate.split('-');
+                    startDateFormatted = `${parseInt(day)}.${parseInt(month)}.`;
+                }
+                
+                if (endDate) {
+                    const [year, month, day] = endDate.split('-');
+                    endDateFormatted = `${parseInt(day)}.${parseInt(month)}.`;
+                }
+                
+                const result = `Od ${startDateFormatted} ${firstTime} do ${endDateFormatted} ${lastTime}`;
+                console.log('Range mode result:', result);
+                return result;
+            }
+        }
+
+        // Funkcia na vytvorenie popisu časového rozsahu
+        function createRangeLabel(zaznamy) {
+            if (zaznamy.length === 0) return [];
+
+            const firstRecord = zaznamy[0];
+            const lastRecord = zaznamy[zaznamy.length - 1];
+            
+            // Získanie módu (jeden deň alebo rozsah)
+            const mode = document.querySelector('input[name="mode"]:checked').value;
+            
+            let rangeDescription;
+            
+            if (mode === 'single') {
+                // Pre jeden deň: "Od 14:30 do 18:30"
+                const firstTime = extractTime(firstRecord.cas);
+                const lastTime = extractTime(lastRecord.cas);
+                rangeDescription = `Od ${firstTime} do ${lastTime}`;
+            } else {
+                // Pre rozsah dátumov: "Od 16.6. 14:30 do 18.6. 18:30"
+                const firstDateTime = extractDateTime(firstRecord.cas);
+                const lastDateTime = extractDateTime(lastRecord.cas);
+                rangeDescription = `Od ${firstDateTime} do ${lastDateTime}`;
+            }
+
+            // Vytvoríme jednoduché pole štítkov - len na začiatku a konci
+            const labels = new Array(zaznamy.length);
+            
+            // Len prvý a posledný štítok
+            labels[0] = rangeDescription;
+            for (let i = 1; i < zaznamy.length - 1; i++) {
+                labels[i] = '';
+            }
+            if (zaznamy.length > 1) {
+                labels[zaznamy.length - 1] = '';
+            }
+            
+            return labels;
+        }
+
+        // Funkcia na extrahovanie času z časového reťazca
+        function extractTime(casString) {
+            try {
+                if (casString.includes(' ')) {
+                    // Formát: "YYYY-MM-DD HH:MM:SS"
+                    const [datePart, timePart] = casString.split(' ');
+                    return timePart.substring(0, 5); // HH:MM
+                } else {
+                    // Formát: "HH:MM:SS" alebo "HH:MM"
+                    return casString.substring(0, 5);
+                }
+            } catch (error) {
+                console.error('Chyba pri extrahovani času:', casString, error);
+                return casString;
+            }
+        }
+
+        // Funkcia na extrahovanie dátumu a času
+        function extractDateTime(casString) {
+            console.log('extractDateTime input:', casString);
+            try {
+                if (casString.includes(' ')) {
+                    // Formát: "YYYY-MM-DD HH:MM:SS" alebo "DD.MM.YYYY HH:MM:SS"
+                    const [datePart, timePart] = casString.split(' ');
+                    
+                    let datum;
+                    if (datePart.includes('-')) {
+                        // Format YYYY-MM-DD
+                        const [year, month, day] = datePart.split('-');
+                        datum = `${parseInt(day)}.${parseInt(month)}.`;
+                    } else if (datePart.includes('.')) {
+                        // Format DD.MM.YYYY alebo DD.MM.
+                        const parts = datePart.split('.');
+                        if (parts.length >= 2 && parts[0] && parts[1]) {
+                            datum = `${parseInt(parts[0])}.${parseInt(parts[1])}.`;
+                        } else {
+                            datum = datePart;
+                        }
+                    } else {
+                        datum = datePart;
+                    }
+                    
+                    const cas = timePart.substring(0, 5); // HH:MM
+                    const result = `${datum} ${cas}`;
+                    console.log('extractDateTime result (with space):', result);
+                    return result;
+                } else if (casString.includes('-')) {
+                    // Formát: "YYYY-MM-DD"
+                    const [year, month, day] = casString.split('-');
+                    const result = `${parseInt(day)}.${parseInt(month)}.`;
+                    console.log('extractDateTime result (date only with -):', result);
+                    return result;
+                } else if (casString.includes('.')) {
+                    // Formát: "DD.MM.YYYY" alebo už formátovaný dátum
+                    console.log('extractDateTime result (already formatted):', casString);
+                    return casString;
+                } else {
+                    // Formát: "HH:MM:SS" alebo "HH:MM" 
+                    // Pre rozsah musíme získať dátum z input polí
+                    const mode = document.querySelector('input[name="mode"]:checked').value;
+                    if (mode === 'range') {
+                        const startDate = document.getElementById('start_date').value; // YYYY-MM-DD
+                        const endDate = document.getElementById('end_date').value;   // YYYY-MM-DD
+                        
+                        // Použijeme start_date pre prvý záznam a end_date pre posledný
+                        // Toto nie je ideálne, ale lepšie ako ?.?.
+                        const cas = casString.substring(0, 5);
+                        
+                        // Pokúsime sa určiť či je to prvý alebo posledný záznam
+                        // Pre teraz použijeme startDate ako fallback
+                        if (startDate) {
+                            const [year, month, day] = startDate.split('-');
+                            const datum = `${parseInt(day)}.${parseInt(month)}.`;
+                            const result = `${datum} ${cas}`;
+                            console.log('extractDateTime result (time only with fallback date):', result);
+                            return result;
+                        }
+                    }
+                    
+                    const result = casString.substring(0, 5);
+                    console.log('extractDateTime result (time only - no date available):', result);
+                    return result;
+                }
+            } catch (error) {
+                console.error('Chyba pri extrahovani dátumu a času:', casString, error);
+                return casString;
+            }
+        }
+
+        // Funkcia na formátovanie časového štítku (už nepoužívaná, ale nechávam pre kompatibilitu)
+        function formatTimeLabel(casString) {
+            try {
+                if (casString.includes(' ')) {
+                    // Formát: "YYYY-MM-DD HH:MM:SS"
+                    const [datePart, timePart] = casString.split(' ');
+                    const [year, month, day] = datePart.split('-');
+                    const datum = `${day}.${month}.`;
+                    const cas = timePart.substring(0, 5); // HH:MM
+                    return `${datum} ${cas}`;
+                } else if (casString.includes('-')) {
+                    // Formát: "YYYY-MM-DD"
+                    const [year, month, day] = casString.split('-');
+                    return `${day}.${month}.`;
+                } else {
+                    // Formát: "HH:MM:SS" alebo "HH:MM"
+                    return casString.substring(0, 5);
+                }
+            } catch (error) {
+                console.error('Chyba pri formátovaní času:', casString, error);
+                return casString;
+            }
         }
 
         // Hlavná funkcia pre načítanie dát
@@ -1071,8 +1347,9 @@
 
             let html = '';
             zaznamy.forEach(zaznam => {
-                const ventil1Status = zaznam.v1 ? '<i class="fas fa-toggle-on" style="color: #28a745;"></i>' : '<i class="fas fa-toggle-off" style="color: #dc3545;"></i>';
-                const ventil2Status = zaznam.v2 ? '<i class="fas fa-toggle-on" style="color: #28a745;"></i>' : '<i class="fas fa-toggle-off" style="color: #dc3545;"></i>';
+                // Opravená logika: 0 = ON (zelené), 1 = OFF (šedé)
+                const ventil1Status = zaznam.v1 === 0 ? '<i class="fas fa-toggle-on" style="color: #28a745;"></i>' : '<i class="fas fa-toggle-off" style="color: #6c757d;"></i>';
+                const ventil2Status = zaznam.v2 === 0 ? '<i class="fas fa-toggle-on" style="color: #28a745;"></i>' : '<i class="fas fa-toggle-off" style="color: #6c757d;"></i>';
                 
                 html += `
                     <tr>
@@ -1113,22 +1390,36 @@
         }
 
         // Pomocné funkcie pre file input
-        document.addEventListener('DOMContentLoaded', function() {
+        function setupFileInput() {
             const fileInput = document.querySelector('input[type="file"]');
             const wrapper = document.querySelector('.file-input-wrapper');
             
             if (fileInput && wrapper) {
+                // Pridáme click event na wrapper
+                wrapper.addEventListener('click', function() {
+                    fileInput.click();
+                });
+                
+                // Pridáme change event na file input
                 fileInput.addEventListener('change', function() {
                     if (this.files.length > 0) {
-                        wrapper.querySelector('i').className = 'fas fa-check';
-                        const text = wrapper.childNodes[2];
-                        if (text) {
-                            text.textContent = ` ${this.files[0].name}`;
+                        const iconElement = wrapper.querySelector('i');
+                        if (iconElement) {
+                            iconElement.className = 'fas fa-check';
+                        }
+                        
+                        // Nájdeme text node a zmeníme ho
+                        const textNodes = Array.from(wrapper.childNodes).filter(node => node.nodeType === Node.TEXT_NODE);
+                        if (textNodes.length > 0) {
+                            textNodes[textNodes.length - 1].textContent = ` ${this.files[0].name}`;
+                        } else {
+                            // Ak nie je text node, pridáme ho
+                            wrapper.appendChild(document.createTextNode(` ${this.files[0].name}`));
                         }
                     }
                 });
             }
-        });
+        }
 
         // Debug funkcie
         function debugData() {

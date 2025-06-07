@@ -72,21 +72,19 @@
             margin-bottom: 40px;
         }
 
-        .welcome-card {
+        .welcome-card, .control-panel {
             background: rgba(255, 255, 255, 0.95);
             padding: 30px;
             border-radius: 20px;
             box-shadow: 0 10px 30px rgba(0,0,0,0.1);
             backdrop-filter: blur(10px);
+        }
+
+        .welcome-card {
             animation: fadeInLeft 1s ease-out;
         }
 
         .control-panel {
-            background: rgba(255, 255, 255, 0.95);
-            padding: 30px;
-            border-radius: 20px;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
-            backdrop-filter: blur(10px);
             animation: fadeInRight 1s ease-out;
         }
 
@@ -182,15 +180,40 @@
         }
 
         .btn:disabled {
-            background: #6c757d;
+            background: #6c757d !important;
             cursor: not-allowed;
             opacity: 0.6;
-            transform: none;
+            transform: none !important;
+            box-shadow: none !important;
         }
 
         .btn:hover:not(:disabled) {
             transform: translateY(-2px);
             box-shadow: 0 8px 25px rgba(0,0,0,0.2);
+        }
+
+        .btn.loading {
+            opacity: 0.7;
+            pointer-events: none;
+        }
+
+        .btn.loading::after {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 20px;
+            height: 20px;
+            margin: -10px 0 0 -10px;
+            border: 2px solid rgba(255,255,255,0.3);
+            border-top: 2px solid rgba(255,255,255,0.8);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
         }
 
         .parameters-section {
@@ -273,6 +296,37 @@
             font-weight: 700;
         }
 
+        .notification {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            padding: 15px 25px;
+            border-radius: 10px;
+            color: white;
+            font-weight: 600;
+            z-index: 1000;
+            transform: translateX(400px);
+            transition: all 0.3s ease;
+            max-width: 300px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+        }
+
+        .notification.show {
+            transform: translateX(0);
+        }
+
+        .notification.success {
+            background: linear-gradient(45deg, #28a745, #20c997);
+        }
+
+        .notification.error {
+            background: linear-gradient(45deg, #dc3545, #e83e8c);
+        }
+
+        .notification.info {
+            background: linear-gradient(45deg, #007bff, #6610f2);
+        }
+
         @keyframes fadeInDown {
             from {
                 opacity: 0;
@@ -333,6 +387,17 @@
             .tabs {
                 flex-wrap: wrap;
             }
+
+            .notification {
+                right: 10px;
+                left: 10px;
+                max-width: none;
+                transform: translateY(-100px);
+            }
+
+            .notification.show {
+                transform: translateY(0);
+            }
         }
     </style>
 </head>
@@ -363,19 +428,19 @@
                 </p>
                 
                 <div class="status-grid">
-                    <div class="status-item {% if serial_ready %}status-ready{% endif %}">
-                        <i class="fas fa-plug icon" style="color: {% if serial_ready %}#28a745{% else %}#6c757d{% endif %};"></i>
+                    <div class="status-item" id="serial-status">
+                        <i class="fas fa-plug icon" id="serial-icon" style="color: #6c757d;"></i>
                         <div>
                             <strong>Sériový port</strong><br>
-                            {% if serial_ready %}<span style="color: #28a745;">Pripravený</span>{% else %}<span style="color: #6c757d;">Nepripravený</span>{% endif %}
+                            <span id="serial-text" style="color: #6c757d;">Nepripravený</span>
                         </div>
                     </div>
                     
-                    <div class="status-item {% if running %}status-running{% endif %}">
-                        <i class="fas fa-play-circle icon" style="color: {% if running %}#ffc107{% else %}#6c757d{% endif %};"></i>
+                    <div class="status-item" id="reading-status">
+                        <i class="fas fa-play-circle icon" id="reading-icon" style="color: #6c757d;"></i>
                         <div>
                             <strong>Čítanie dát</strong><br>
-                            {% if running %}<span style="color: #ffc107;">Prebieha</span>{% else %}<span style="color: #6c757d;">Zastavené</span>{% endif %}
+                            <span id="reading-text" style="color: #6c757d;">Zastavené</span>
                         </div>
                     </div>
                 </div>
@@ -387,29 +452,21 @@
                 </h2>
                 
                 <div class="control-buttons">
-                    <form action="{{ url_for('open_connection') }}" method="post" style="margin: 0;">
-                        <button type="submit" class="btn btn-open" {% if serial_ready %}disabled{% endif %}>
-                            <i class="fas fa-power-off icon"></i>Open
-                        </button>
-                    </form>
+                    <button id="btn-open" class="btn btn-open" onclick="sendCommand('open')">
+                        <i class="fas fa-power-off icon"></i>Open
+                    </button>
                     
-                    <form action="{{ url_for('start_reading') }}" method="post" style="margin: 0;">
-                        <button type="submit" class="btn btn-start" {% if not serial_ready or running %}disabled{% endif %}>
-                            <i class="fas fa-play icon"></i>Start
-                        </button>
-                    </form>
+                    <button id="btn-start" class="btn btn-start" onclick="sendCommand('start')">
+                        <i class="fas fa-play icon"></i>Start
+                    </button>
                     
-                    <form action="{{ url_for('stop_reading') }}" method="post" style="margin: 0;">
-                        <button type="submit" class="btn btn-stop" {% if not running %}disabled{% endif %}>
-                            <i class="fas fa-stop icon"></i>Stop
-                        </button>
-                    </form>
+                    <button id="btn-stop" class="btn btn-stop" onclick="sendCommand('stop')">
+                        <i class="fas fa-stop icon"></i>Stop
+                    </button>
                     
-                    <form action="{{ url_for('close_connection') }}" method="post" style="margin: 0;">
-                        <button type="submit" class="btn btn-close" {% if not serial_ready %}disabled{% endif %}>
-                            <i class="fas fa-times icon"></i>Close
-                        </button>
-                    </form>
+                    <button id="btn-close" class="btn btn-close" onclick="sendCommand('close')">
+                        <i class="fas fa-times icon"></i>Close
+                    </button>
                 </div>
             </div>
         </div>
@@ -419,12 +476,12 @@
                 <i class="fas fa-sliders-h icon"></i>Nastavenie parametrov
             </h2>
             
-            <form action="{{ url_for('set_parameters') }}" method="post">
+            <form id="parameters-form" onsubmit="submitParameters(event)">
                 <div class="form-grid">
                     <div class="form-group">
                         <label for="solar_threshold">
                             <i class="fas fa-sun" style="color: #ffc107;"></i>
-                            Teplota Solar ON (°C):
+                            Teplota 1 threshold (°C):
                         </label>
                         <input type="number" 
                                name="solar_threshold" 
@@ -437,7 +494,7 @@
                     <div class="form-group">
                         <label for="boiler_threshold">
                             <i class="fas fa-fire" style="color: #dc3545;"></i>
-                            Teplota Boiler ON (°C):
+                            Teplota 2 threshold (°C):
                         </label>
                         <input type="number" 
                                name="boiler_threshold" 
@@ -454,5 +511,163 @@
             </form>
         </div>
     </div>
+
+    <div id="notification" class="notification"></div>
+
+    <script>
+        let systemState = {
+            serialReady: {{ 'true' if serial_ready else 'false' }},
+            running: {{ 'true' if running else 'false' }}
+        };
+
+        document.addEventListener('DOMContentLoaded', function() {
+            updateUI();
+            setInterval(checkSystemStatus, 3000);
+        });
+
+        function showNotification(message, type = 'info') {
+            const notification = document.getElementById('notification');
+            notification.textContent = message;
+            notification.className = `notification ${type}`;
+            notification.classList.add('show');
+
+            setTimeout(() => {
+                notification.classList.remove('show');
+            }, 3000);
+        }
+
+        function updateUI() {
+            const serialStatus = document.getElementById('serial-status');
+            const serialIcon = document.getElementById('serial-icon');
+            const serialText = document.getElementById('serial-text');
+            
+            const readingStatus = document.getElementById('reading-status');
+            const readingIcon = document.getElementById('reading-icon');
+            const readingText = document.getElementById('reading-text');
+
+            if (systemState.serialReady) {
+                serialStatus.classList.add('status-ready');
+                serialIcon.style.color = '#28a745';
+                serialText.style.color = '#28a745';
+                serialText.textContent = 'Pripravený';
+            } else {
+                serialStatus.classList.remove('status-ready');
+                serialIcon.style.color = '#6c757d';
+                serialText.style.color = '#6c757d';
+                serialText.textContent = 'Nepripravený';
+            }
+
+            if (systemState.running) {
+                readingStatus.classList.add('status-running');
+                readingIcon.style.color = '#ffc107';
+                readingText.style.color = '#ffc107';
+                readingText.textContent = 'Prebieha';
+            } else {
+                readingStatus.classList.remove('status-running');
+                readingIcon.style.color = '#6c757d';
+                readingText.style.color = '#6c757d';
+                readingText.textContent = 'Zastavené';
+            }
+
+            updateButtons();
+        }
+
+        function updateButtons() {
+            const btnOpen = document.getElementById('btn-open');
+            const btnStart = document.getElementById('btn-start');
+            const btnStop = document.getElementById('btn-stop');
+            const btnClose = document.getElementById('btn-close');
+
+            btnOpen.disabled = systemState.serialReady;
+            btnStart.disabled = !systemState.serialReady || systemState.running;
+            btnStop.disabled = !systemState.running;
+            btnClose.disabled = !systemState.serialReady;
+        }
+
+        async function sendCommand(command) {
+            const button = document.getElementById(`btn-${command}`);
+            
+            button.classList.add('loading');
+            button.disabled = true;
+
+            try {
+                const response = await fetch(`/${command}`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    }
+                });
+
+                if (response.ok) {
+                    switch(command) {
+                        case 'open':
+                            systemState.serialReady = true;
+                            showNotification('Sériový port úspešne otvorený!', 'success');
+                            break;
+                        case 'start':
+                            systemState.running = true;
+                            showNotification('Čítanie dát spustené!', 'success');
+                            break;
+                        case 'stop':
+                            systemState.running = false;
+                            showNotification('Čítanie dát zastavené!', 'info');
+                            break;
+                        case 'close':
+                            systemState.serialReady = false;
+                            systemState.running = false;
+                            showNotification('Sériový port zatvorený!', 'info');
+                            break;
+                    }
+                    updateUI();
+                } else {
+                    showNotification('Chyba pri vykonávaní príkazu!', 'error');
+                }
+            } catch (error) {
+                console.error('Chyba:', error);
+                showNotification('Chyba komunikácie so serverom!', 'error');
+            } finally {
+                button.classList.remove('loading');
+                updateButtons();
+            }
+        }
+
+        async function submitParameters(event) {
+            event.preventDefault();
+            
+            const form = document.getElementById('parameters-form');
+            const submitBtn = form.querySelector('.btn-submit');
+            const formData = new FormData(form);
+            
+            submitBtn.classList.add('loading');
+            submitBtn.disabled = true;
+
+            try {
+                const response = await fetch('/set_parameters', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                if (response.ok) {
+                    showNotification('Parametre úspešne uložené!', 'success');
+                } else {
+                    showNotification('Chyba pri ukladaní parametrov!', 'error');
+                }
+            } catch (error) {
+                console.error('Chyba:', error);
+                showNotification('Chyba komunikácie so serverom!', 'error');
+            } finally {
+                submitBtn.classList.remove('loading');
+                submitBtn.disabled = false;
+            }
+        }
+
+        async function checkSystemStatus() {
+            try {
+                // Endpoint pre získanie aktuálneho stavu
+            } catch (error) {
+                console.log('Status check failed:', error);
+            }
+        }
+    </script>
 </body>
 </html>
