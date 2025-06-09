@@ -1,0 +1,361 @@
+<!DOCTYPE html>
+<html lang="sk">
+<head>
+	<script src="https://cdn.jsdelivr.net/npm/chart.js@2.9.4/dist/Chart.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chartjs-gauge@0.3.0/dist/chartjs-gauge.min.js"></script>
+
+
+    <meta charset="UTF-8">
+    <title>Monitorovanie systemu</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            text-align: center;
+            margin: 0;
+            padding: 0;
+        }
+
+        h1 {
+            margin-top: 30px;
+        }
+
+        .tabs {
+            display: flex;
+            justify-content: center;
+            margin: 20px 0;
+        }
+
+        .tab {
+            padding: 15px 30px;
+            margin: 0 10px;
+            background-color: #f0f0f0;
+            border-radius: 5px;
+            cursor: pointer;
+            text-decoration: none;
+            color: black;
+            font-weight: bold;
+        }
+
+        .tab:hover {
+            background-color: #dcdcdc;
+        }
+
+        .active {
+            background-color: #b0c4de;
+        }
+
+        .content {
+            padding: 20px;
+        }
+    </style>
+</head>
+<body>
+
+    <h1>Monitorovanie systemu</h1>
+
+    <div class="tabs">
+        <a href="{{ url_for('index') }}" class="tab">Domov</a>
+        <a href="{{ url_for('udaje') }}" class="tab">Udaje</a>
+        <a href="{{ url_for('databaza') }}" class="tab">Databaza</a>
+    </div>
+    
+	<div class="content" style="display: flex; align-items: flex-start; gap: 20px; justify-content: center;">
+    <!-- Zoznam -->
+    <div style="width: 400px; max-height: 400px; overflow-y: auto; border: 1px solid #ccc; padding: 10px; text-align: left;">
+        <h2>Najnovšie záznamy</h2>
+        {% if zaznamy %}
+        <table border="1" cellpadding="8" cellspacing="0" style="width: 100%; border-collapse: collapse;">
+            <thead>
+                <tr>
+                    <th>Čas</th>
+                    <th>T1</th>
+                    <th>T2</th>
+                    <th>V1</th>
+                    <th>V2</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for z in zaznamy %}
+                <tr>
+                    <td>{{ z[0] }}</td>
+                    <td>{{ z[1] }}</td>
+                    <td>{{ z[2] }}</td>
+                    <td>{{ 'Zapnuté' if z[3] else 'Vypnuté' }}</td>
+                    <td>{{ 'Zapnuté' if z[4] else 'Vypnuté' }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% else %}
+        <p>Nie sú dostupné žiadne záznamy.</p>
+        {% endif %}
+    </div>
+
+    <!-- Graf -->
+    <div style="flex-shrink: 0; width: 350px;">
+        <h2>Graf teplôt</h2>
+        <label><input type="checkbox" id="t1Checkbox" checked> Zobraziť Teplota 1</label><br>
+        <label><input type="checkbox" id="t2Checkbox" checked> Zobraziť Teplota 2</label>
+        <canvas id="tempChart" width="350" height="200"></canvas>
+    </div>
+    
+    <!-- Graf ventilov -->
+	<div style="flex-shrink: 0; width: 350px;">
+		<h2>Graf ventilov</h2>
+		<label><input type="radio" name="ventilSelect" value="ventil1" checked> Ventil 1</label><br>
+		<label><input type="radio" name="ventilSelect" value="ventil2"> Ventil 2</label>
+		<canvas id="ventilChart" width="350" height="200"></canvas>
+	</div>
+
+</div>
+	<div style="display: flex; justify-content: center; gap: 40px; margin-top: 20px;">
+	  <div>
+		<h3>Teplota 1</h3>
+		<canvas id="gaugeT1" width="200" height="200"></canvas>
+	  </div>
+	  <div>
+		<h3>Teplota 2</h3>
+		<canvas id="gaugeT2" width="200" height="200"></canvas>
+	  </div>
+	</div>
+</body>
+</html>
+
+<script>
+    let tempChart;
+    let chartData = {};
+
+    function updateChart() {
+        const showT1 = document.getElementById('t1Checkbox').checked;
+        const showT2 = document.getElementById('t2Checkbox').checked;
+
+        const datasets = [];
+
+        if (showT1) {
+            datasets.push({
+                label: 'Teplota 1',
+                data: chartData.teplota1,
+                borderColor: 'red',
+                fill: false,
+                tension: 0.1
+            });
+        }
+
+        if (showT2) {
+            datasets.push({
+                label: 'Teplota 2',
+                data: chartData.teplota2,
+                borderColor: 'blue',
+                fill: false,
+                tension: 0.1
+            });
+        }
+
+        tempChart.data = {
+            labels: chartData.labels,
+            datasets: datasets
+        };
+        tempChart.update();
+    }
+
+    async function fetchDataAndInitChart() {
+        try {
+            const response = await fetch('/api/teploty');
+            chartData = await response.json();
+            console.log("Načítané dáta pre teploty:", chartData);
+
+            const ctx = document.getElementById('tempChart').getContext('2d');
+            tempChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: chartData.labels,
+                    datasets: []
+                },
+                options: {
+                    responsive: true,
+                    plugins: {
+                        legend: {
+                            display: true
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: false
+                        }
+                    }
+                }
+            });
+
+            updateChart();
+        } catch (error) {
+            console.error("Chyba pri nacitani dat pre graf:", error);
+        }
+    }
+
+    document.getElementById('t1Checkbox').addEventListener('change', updateChart);
+    document.getElementById('t2Checkbox').addEventListener('change', updateChart);
+
+    fetchDataAndInitChart();
+</script>
+<script>
+    let ventilChart;
+    let ventilData = {};
+
+    async function fetchVentilDataAndInitChart() {
+        try {
+            const response = await fetch('/api/ventily');
+            ventilData = await response.json();
+            console.log("Načítané dáta pre ventily:", ventilData);
+
+            const ctx = document.getElementById('ventilChart').getContext('2d');
+            ventilChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: ventilData.labels,
+                    datasets: []
+                },
+                options: {
+                    responsive: true,
+                    plugins: {
+                        legend: {
+                            display: true
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            max: 1,
+                            ticks: {
+                                stepSize: 1,
+                                callback: value => value === 1 ? 'Zapnuté' : 'Vypnuté'
+                            }
+                        }
+                    }
+                }
+            });
+
+            updateVentilChart();
+        } catch (error) {
+            console.error("Chyba pri načítaní ventilových dát:", error);
+        }
+    }
+
+    function updateVentilChart() {
+        const selected = document.querySelector('input[name="ventilSelect"]:checked').value;
+
+        let dataset;
+        if (selected === 'ventil1') {
+            dataset = {
+                label: 'Ventil 1',
+                data: ventilData.ventil1,
+                borderColor: 'green',
+                fill: false,
+                stepped: true
+            };
+        } else {
+            dataset = {
+                label: 'Ventil 2',
+                data: ventilData.ventil2,
+                borderColor: 'orange',
+                fill: false,
+                stepped: true
+            };
+        }
+
+        ventilChart.data = {
+            labels: ventilData.labels,
+            datasets: [dataset]
+        };
+        ventilChart.update();
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+        document.querySelectorAll('input[name="ventilSelect"]').forEach(radio => {
+            radio.addEventListener('change', updateVentilChart);
+        });
+    });
+
+    fetchVentilDataAndInitChart();
+</script>
+<script>
+  let gaugeT1, gaugeT2;
+
+  function createGauge(ctx, label) {
+    console.log("Inicializujem gauge pre:", label);
+    return new Chart(ctx, {
+      type: 'gauge',
+      data: {
+        datasets: [{
+          value: 0,
+          minValue: 0,
+          data: [20, 30, 50, 100],
+          backgroundColor: ['green', 'yellow', 'orange', 'red'],
+          borderWidth: 2
+        }]
+      },
+      options: {
+        responsive: true,
+        title: {
+          display: true,
+          text: label
+        },
+        needle: {
+          radiusPercentage: 2,
+          widthPercentage: 3.2,
+          lengthPercentage: 80,
+          color: 'black'
+        },
+        valueLabel: {
+          display: true,
+          formatter: (value) => value.toFixed(1) + ' °C',
+          color: 'black',
+          backgroundColor: '#fff',
+          borderRadius: 5,
+          padding: {
+            top: 10,
+            bottom: 10
+          }
+        }
+      }
+    });
+  }
+
+  function updateGauges(t1, t2) {
+    console.log("Aktualizujem gauges:", { t1, t2 });
+    if (gaugeT1 && gaugeT2) {
+      gaugeT1.data.datasets[0].value = t1;
+      gaugeT2.data.datasets[0].value = t2;
+      gaugeT1.update();
+      gaugeT2.update();
+    } else {
+      console.warn("Gauge objekty nie sú inicializované!");
+    }
+  }
+
+  async function fetchAndUpdateGauges() {
+    try {
+      const response = await fetch('/api/teploty');
+      const data = await response.json();
+      console.log("Načítané dáta pre gauges:", data);
+
+      const latestT1 = data.teplota1[data.teplota1.length - 1];
+      const latestT2 = data.teplota2[data.teplota2.length - 1];
+
+      updateGauges(latestT1, latestT2);
+    } catch (error) {
+      console.error("Chyba pri načítaní údajov pre gauge grafy:", error);
+    }
+  }
+
+  document.addEventListener('DOMContentLoaded', () => {
+    console.log("DOM načítaný, inicializujem gauge grafy...");
+    const ctxT1 = document.getElementById('gaugeT1').getContext('2d');
+    const ctxT2 = document.getElementById('gaugeT2').getContext('2d');
+
+    gaugeT1 = createGauge(ctxT1, 'Teplota 1');
+    gaugeT2 = createGauge(ctxT2, 'Teplota 2');
+
+    fetchAndUpdateGauges();
+    setInterval(fetchAndUpdateGauges, 5000);
+  });
+</script>
